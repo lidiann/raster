@@ -23,13 +23,7 @@ let%expect_test "bluescreen" =
   let bluescreen_image =
     Image.load_ppm ~filename:"../images/reference-oz_bluescreen_vfx.ppm"
   in
-  let compare =
-    Image.foldi my_image ~init:0 ~f:(fun ~x ~y num_incorrect pixel ->
-      let correct_pixel = Image.get bluescreen_image ~x ~y in
-      match Pixel.equal pixel correct_pixel with
-      | true -> num_incorrect
-      | false -> num_incorrect + 1)
-  in
+  let compare = Image.compare my_image bluescreen_image in
   (* Also want to print how many pixels are incorrect and/or which *)
   print_endline (Int.to_string compare);
   [%expect {|0|}]

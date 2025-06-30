@@ -3,6 +3,8 @@ open Core
 (* This should look familiar by now! *)
 let transform image = image
 
+let %expect_test "dither" = ;;
+
 let command =
   Command.basic
     ~summary:"Dither an image"

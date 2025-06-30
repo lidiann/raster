@@ -14,13 +14,9 @@ let%expect_test "grayscale" =
     Image.load_ppm ~filename:"../images/reference-beach_portrait_gray.ppm"
   in
   let my_grey_image = transform image in
-  let compare =
-    Image.foldi my_grey_image ~init:0 ~f:(fun ~x ~y num_incorrect pixel ->
-      let correct_pixel = Image.get grey_image ~x ~y in
-      match Pixel.equal pixel correct_pixel with
-      | true -> num_incorrect
-      | false -> num_incorrect + 1)
-  in
+  (* CR leli: Could you extract this into a separate helper function *)
+  let compare = Image.compare my_grey_image grey_image in
+  (* CR leli: Print some sample pixels that are incorrect *)
   (* Also want to print how many pixels are incorrect and/or which *)
   print_endline (Int.to_string compare);
   [%expect {|0|}]
