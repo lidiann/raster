@@ -5,11 +5,40 @@ open Core
    the corresponding position in the background image instead of
    just ignoring the background image and returning the foreground image.
 *)
-let transform ~foreground ~background:_ = foreground
+let transform ~foreground ~(background : Image.t) : _ =
+  Image.mapi foreground ~f:(fun ~x ~y fore_pixel ->
+    match
+      Pixel.blue fore_pixel > Pixel.red fore_pixel + Pixel.green fore_pixel
+    with
+    | false -> fore_pixel
+    | true -> Image.get background ~x ~y)
+;;
+
+let%expect_test "bluescreen" =
+  let my_image =
+    transform
+      ~foreground:(Image.load_ppm ~filename:"../images/oz_bluescreen.ppm")
+      ~background:(Image.load_ppm ~filename:"../images/meadow.ppm")
+  in
+  let bluescreen_image =
+    Image.load_ppm ~filename:"../images/reference-oz_bluescreen_vfx.ppm"
+  in
+  let compare =
+    Image.foldi my_image ~init:0 ~f:(fun ~x ~y num_incorrect pixel ->
+      let correct_pixel = Image.get bluescreen_image ~x ~y in
+      match Pixel.equal pixel correct_pixel with
+      | true -> num_incorrect
+      | false -> num_incorrect + 1)
+  in
+  (* Also want to print how many pixels are incorrect and/or which *)
+  print_endline (Int.to_string compare);
+  [%expect {|0|}]
+;;
 
 let command =
   Command.basic
-    ~summary:"Replace the 'blue' pixels of an image with those from another image"
+    ~summary:
+      "Replace the 'blue' pixels of an image with those from another image"
     [%map_open.Command
       let foreground_file =
         flag
@@ -28,5 +57,7 @@ let command =
         let image' = transform ~foreground ~background in
         Image.save_ppm
           image'
-          ~filename:(String.chop_suffix_exn foreground_file ~suffix:".ppm" ^ "_vfx.ppm")]
+          ~filename:
+            (String.chop_suffix_exn foreground_file ~suffix:".ppm"
+             ^ "_vfx.ppm")]
 ;;
