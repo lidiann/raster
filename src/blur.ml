@@ -27,8 +27,8 @@ let%expect_test "blur" =
     Image.load_ppm ~filename:"../images/reference-beach_portrait_blur.ppm"
   in
   let compare = Image.compare my_image bluescreen_image in
-  print_endline (Int.to_string compare);
-  [%expect {|0|}]
+  print_endline compare;
+  [%expect {|Number pixels incorrect: 0 |}]
 ;;
 
 let command =

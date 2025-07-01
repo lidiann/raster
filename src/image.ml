@@ -236,12 +236,27 @@ let simple_test data ~f =
     f filename)
 ;;
 
-let compare (my_image : t) (correct_image : t) : int =
-  foldi my_image ~init:0 ~f:(fun ~x ~y num_incorrect pixel ->
-    let correct_pixel = get correct_image ~x ~y in
-    match Pixel.equal pixel correct_pixel with
-    | true -> num_incorrect
-    | false -> num_incorrect + 1)
+let compare (my_image : t) (correct_image : t) =
+  let complete_incorrect_list =
+    foldi my_image ~init:[] ~f:(fun ~x ~y incorrect_list pixel ->
+      let correct_pixel = get correct_image ~x ~y in
+      match Pixel.equal pixel correct_pixel with
+      | true -> incorrect_list
+      | false -> List.append incorrect_list [ correct_pixel, pixel ])
+  in
+  let num_incorrect = Int.to_string (List.length complete_incorrect_list) in
+  let first_pair =
+    match List.hd complete_incorrect_list with
+    | None -> ""
+    | Some (correct_pixel, incorrect_pixel) ->
+      String.concat
+        [ " Correct pixel: "
+        ; Pixel.to_string correct_pixel
+        ; " Incorrect Pixel: "
+        ; Pixel.to_string incorrect_pixel
+        ]
+  in
+  String.concat [ "Number pixels incorrect: "; num_incorrect; first_pair ]
 ;;
 
 let%expect_test "round trip" =

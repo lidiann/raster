@@ -25,8 +25,8 @@ let%expect_test "bluescreen" =
   in
   let compare = Image.compare my_image bluescreen_image in
   (* Also want to print how many pixels are incorrect and/or which *)
-  print_endline (Int.to_string compare);
-  [%expect {|0|}]
+  print_endline compare;
+  [%expect {|Number pixels incorrect: 0 |}]
 ;;
 
 let command =

@@ -77,8 +77,8 @@ let%expect_test "dither" =
     Image.load_ppm ~filename:"../images/reference-beach_portrait_dither.ppm"
   in
   let compare = Image.compare my_image dither_image in
-  print_endline (Int.to_string compare);
-  [%expect {|0|}]
+  print_endline compare;
+  [%expect {|Number pixels incorrect: 0 |}]
 ;;
 
 let command =

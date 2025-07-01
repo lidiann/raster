@@ -97,4 +97,4 @@ val make : ?max_val:int -> width:int -> height:int -> Pixel.t -> t
 (** [compare image image] returns the counts of pixels that are different between two
     images. Returns 0 if there are no pixels that differ. Assumes the images have the same
     dimensions. *)
-val compare : t -> t -> int
+val compare : t -> t -> string
