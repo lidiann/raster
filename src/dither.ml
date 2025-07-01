@@ -1,58 +1,72 @@
 open Core
 
-let dither image ~x ~y pixel =
+let distribute_to_adj ~x ~y image ~error ~width ~height =
+  (* Add 7/16 error to pixel to the right *)
+  if x + 1 < width
+  then (
+    let adjustment = 7. *. error /. 16. in
+    Image.set
+      image
+      ~x:(x + 1)
+      ~y
+      (Pixel.( + )
+         (Image.get image ~x:(x + 1) ~y)
+         (Pixel.of_int (Float.to_int (Float.round adjustment)))));
+  (* Add 3/16 error to bottom left *)
+  if x - 1 > 0 && y + 1 < height
+  then (
+    let adjustment = 3. *. error /. 16. in
+    Image.set
+      image
+      ~x:(x - 1)
+      ~y:(y + 1)
+      (Pixel.( + )
+         (Image.get image ~x:(x - 1) ~y:(y + 1))
+         (Pixel.of_int (Float.to_int (Float.round adjustment)))));
+  (* Add 5/16 error to below *)
+  if y + 1 < height
+  then (
+    let adjustment = 5. *. error /. 16. in
+    Image.set
+      image
+      ~x
+      ~y:(y + 1)
+      (Pixel.( + )
+         (Image.get image ~x ~y:(y + 1))
+         (Pixel.of_int (Float.to_int (Float.round adjustment)))));
+  (* Add 1/16 error to bottom right *)
+  if x + 1 < width && y + 1 < height
+  then (
+    let adjustment = error /. 16. in
+    Image.set
+      image
+      ~x:(x + 1)
+      ~y:(y + 1)
+      (Pixel.( + )
+         (Image.get image ~x:(x + 1) ~y:(y + 1))
+         (Pixel.of_int (Float.to_int (Float.round adjustment)))))
+;;
+
+let dither image ~x ~y pixel : Pixel.t =
   let max = Image.max_val image in
-  let error = (max / 2) - Pixel.red pixel in
-  let height = Image.height image - 1 in
+  let pixel_val = Pixel.red pixel in
   let width = Image.width image - 1 in
-  (* Distrubute to adjacent pixels *)
-  if (not (Int.equal x 0)) || not (Int.equal y 0)
-  then (
-    match Pixel.red pixel + (3 / 16 * error) < 0 with
-    | true -> Image.set image ~x:(x - 1) ~y:(y - 1) Pixel.zero
-    | false ->
-      Image.set
-        image
-        ~x:(x - 1)
-        ~y:(y - 1)
-        (Pixel.( + ) pixel (Pixel.of_int (3 / 16 * error))));
-  if not (Int.equal x width)
-  then (
-    match Pixel.red pixel + (7 / 16 * error) < 0 with
-    | true -> Image.set image ~x:(x + 1) ~y Pixel.zero
-    | false ->
-      Image.set
-        image
-        ~x:(x + 1)
-        ~y
-        (Pixel.( + ) pixel (Pixel.of_int (7 / 16 * error))));
-  if not (Int.equal y height)
-  then (
-    match Pixel.red pixel + (5 / 16 * error) < 0 with
-    | true -> Image.set image ~x ~y:(y - 1) Pixel.zero
-    | false ->
-      Image.set
-        image
-        ~x
-        ~y:(y - 1)
-        (Pixel.( + ) pixel (Pixel.of_int (5 / 16 * error))));
-  if (not (Int.equal x 0)) || not (Int.equal y height)
-  then (
-    match Pixel.red pixel + (1 / 16 * error) < 0 with
-    | true -> Image.set image ~x:(x + 1) ~y:(y - 1) Pixel.zero
-    | false ->
-      Image.set
-        image
-        ~x:(x + 1)
-        ~y:(y - 1)
-        (Pixel.( + ) pixel (Pixel.of_int (1 / 16 * error))));
-  match error > 0 with true -> Pixel.of_int max | false -> Pixel.zero
+  let height = Image.height image - 1 in
+  match Float.( > ) (Int.to_float pixel_val) (Int.to_float max /. 2.) with
+  | true ->
+    let error = Int.to_float (pixel_val - max) in
+    distribute_to_adj ~x ~y image ~error ~width ~height;
+    Pixel.of_int max
+  | false ->
+    let error = Int.to_float pixel_val in
+    distribute_to_adj ~x ~y image ~error ~width ~height;
+    Pixel.zero
 ;;
 
 (* This should look familiar by now! *)
 let transform image =
-  let image = Grayscale.transform image in
-  Image.mapi image ~f:(fun ~x ~y pixel -> dither image ~x ~y pixel)
+  let grey_image = Grayscale.transform image in
+  Image.mapi grey_image ~f:(fun ~x ~y pixel -> dither grey_image ~x ~y pixel)
 ;;
 
 let%expect_test "dither" =
