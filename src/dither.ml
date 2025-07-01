@@ -1,50 +1,27 @@
 open Core
 
-let distribute_to_adj ~x ~y image ~error ~width ~height =
-  (* Add 7/16 error to pixel to the right *)
-  if x + 1 <= width
+let adjust_pixel ~error image ~x ~y width height ~adjust =
+  if x <= width && x >= 0 && y <= height
   then (
-    let adjustment = 7. *. error /. 16. in
-    Image.set
-      image
-      ~x:(x + 1)
-      ~y
-      (Pixel.( + )
-         (Image.get image ~x:(x + 1) ~y)
-         (Pixel.of_int (Float.to_int (Float.round adjustment)))));
-  (* Add 3/16 error to bottom left *)
-  if x - 1 >= 0 && y + 1 <= height
-  then (
-    let adjustment = 3. *. error /. 16. in
-    Image.set
-      image
-      ~x:(x - 1)
-      ~y:(y + 1)
-      (Pixel.( + )
-         (Image.get image ~x:(x - 1) ~y:(y + 1))
-         (Pixel.of_int (Float.to_int (Float.round adjustment)))));
-  (* Add 5/16 error to below *)
-  if y + 1 <= height
-  then (
-    let adjustment = 5. *. error /. 16. in
+    let adjustment = adjust *. error /. 16. in
     Image.set
       image
       ~x
-      ~y:(y + 1)
+      ~y
       (Pixel.( + )
-         (Image.get image ~x ~y:(y + 1))
-         (Pixel.of_int (Float.to_int (Float.round adjustment)))));
-  (* Add 1/16 error to bottom right *)
-  if x + 1 <= width && y + 1 <= height
-  then (
-    let adjustment = error /. 16. in
-    Image.set
-      image
-      ~x:(x + 1)
-      ~y:(y + 1)
-      (Pixel.( + )
-         (Image.get image ~x:(x + 1) ~y:(y + 1))
+         (Image.get image ~x ~y)
          (Pixel.of_int (Float.to_int (Float.round adjustment)))))
+;;
+
+let distribute_to_adj ~x ~y image ~error ~width ~height =
+  (* Add 7/16 error to pixel to the right *)
+  adjust_pixel ~error image ~x:(x + 1) ~y width height ~adjust:7.;
+  (* Add 3/16 error to bottom left *)
+  adjust_pixel ~error image ~x:(x - 1) ~y:(y + 1) width height ~adjust:3.;
+  (* Add 5/16 error to below *)
+  adjust_pixel ~error image ~x ~y:(y + 1) width height ~adjust:5.;
+  (* Add 1/16 error to bottom right *)
+  adjust_pixel ~error image ~x:(x + 1) ~y:(y + 1) width height ~adjust:1.
 ;;
 
 let dither image ~x ~y pixel : Pixel.t =
