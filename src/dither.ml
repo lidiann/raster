@@ -2,7 +2,7 @@ open Core
 
 let distribute_to_adj ~x ~y image ~error ~width ~height =
   (* Add 7/16 error to pixel to the right *)
-  if x + 1 < width
+  if x + 1 <= width
   then (
     let adjustment = 7. *. error /. 16. in
     Image.set
@@ -13,7 +13,7 @@ let distribute_to_adj ~x ~y image ~error ~width ~height =
          (Image.get image ~x:(x + 1) ~y)
          (Pixel.of_int (Float.to_int (Float.round adjustment)))));
   (* Add 3/16 error to bottom left *)
-  if x - 1 > 0 && y + 1 < height
+  if x - 1 >= 0 && y + 1 <= height
   then (
     let adjustment = 3. *. error /. 16. in
     Image.set
@@ -24,7 +24,7 @@ let distribute_to_adj ~x ~y image ~error ~width ~height =
          (Image.get image ~x:(x - 1) ~y:(y + 1))
          (Pixel.of_int (Float.to_int (Float.round adjustment)))));
   (* Add 5/16 error to below *)
-  if y + 1 < height
+  if y + 1 <= height
   then (
     let adjustment = 5. *. error /. 16. in
     Image.set
@@ -35,7 +35,7 @@ let distribute_to_adj ~x ~y image ~error ~width ~height =
          (Image.get image ~x ~y:(y + 1))
          (Pixel.of_int (Float.to_int (Float.round adjustment)))));
   (* Add 1/16 error to bottom right *)
-  if x + 1 < width && y + 1 < height
+  if x + 1 <= width && y + 1 <= height
   then (
     let adjustment = error /. 16. in
     Image.set
@@ -52,7 +52,7 @@ let dither image ~x ~y pixel : Pixel.t =
   let pixel_val = Pixel.red pixel in
   let width = Image.width image - 1 in
   let height = Image.height image - 1 in
-  match Float.( > ) (Int.to_float pixel_val) (Int.to_float max /. 2.) with
+  match pixel_val > max / 2 with
   | true ->
     let error = Int.to_float (pixel_val - max) in
     distribute_to_adj ~x ~y image ~error ~width ~height;
