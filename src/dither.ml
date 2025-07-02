@@ -1,6 +1,8 @@
 open Core
 
-let adjust_pixel ~error image ~x ~y width height ~adjust =
+let adjust_pixel ~error image ~x ~y ~adjust =
+  let width = Image.width image - 1 in
+  let height = Image.height image - 1 in
   if x <= width && x >= 0 && y <= height
   then (
     let adjustment = adjust *. error /. 16. in
@@ -13,31 +15,34 @@ let adjust_pixel ~error image ~x ~y width height ~adjust =
          (Pixel.of_int (Float.to_int (Float.round adjustment)))))
 ;;
 
-let distribute_to_adj ~x ~y image ~error ~width ~height =
+let distribute_to_adj ~x ~y image ~error =
   (* Add 7/16 error to pixel to the right *)
-  adjust_pixel ~error image ~x:(x + 1) ~y width height ~adjust:7.;
+  adjust_pixel ~error image ~x:(x + 1) ~y ~adjust:7.;
   (* Add 3/16 error to bottom left *)
-  adjust_pixel ~error image ~x:(x - 1) ~y:(y + 1) width height ~adjust:3.;
+  adjust_pixel ~error image ~x:(x - 1) ~y:(y + 1) ~adjust:3.;
   (* Add 5/16 error to below *)
-  adjust_pixel ~error image ~x ~y:(y + 1) width height ~adjust:5.;
+  adjust_pixel ~error image ~x ~y:(y + 1) ~adjust:5.;
   (* Add 1/16 error to bottom right *)
-  adjust_pixel ~error image ~x:(x + 1) ~y:(y + 1) width height ~adjust:1.
+  adjust_pixel ~error image ~x:(x + 1) ~y:(y + 1) ~adjust:1.
 ;;
+
+(* match pixel_val > max / 2 with
+   | true ->
+   let error = Int.to_float (pixel_val - max) in
+   distribute_to_adj ~x ~y image ~error ~width ~height;
+   Pixel.of_int max
+   | false ->
+   let error = Int.to_float pixel_val in
+   distribute_to_adj ~x ~y image ~error ~width ~height;
+   Pixel.zero *)
 
 let dither image ~x ~y pixel : Pixel.t =
   let max = Image.max_val image in
   let pixel_val = Pixel.red pixel in
-  let width = Image.width image - 1 in
-  let height = Image.height image - 1 in
-  match pixel_val > max / 2 with
-  | true ->
-    let error = Int.to_float (pixel_val - max) in
-    distribute_to_adj ~x ~y image ~error ~width ~height;
-    Pixel.of_int max
-  | false ->
-    let error = Int.to_float pixel_val in
-    distribute_to_adj ~x ~y image ~error ~width ~height;
-    Pixel.zero
+  let new_pixel_val = Int.round pixel_val ~to_multiple_of:max in
+  let error = Int.to_float (pixel_val - new_pixel_val) in
+  distribute_to_adj ~x ~y image ~error;
+  Pixel.of_int new_pixel_val
 ;;
 
 (* This should look familiar by now! *)
