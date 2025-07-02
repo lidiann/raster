@@ -1,5 +1,6 @@
 open Core
 
+(* CR leli: apply_threshold *)
 let match_threshold_against color ~rgb_threshold ~max =
   let float_color = Int.to_float color in
   match Float.( >= ) float_color rgb_threshold with
@@ -7,6 +8,7 @@ let match_threshold_against color ~rgb_threshold ~max =
   | false -> Float.to_int (Float.round float_color)
 ;;
 
+(* CR leli: Use ints everywhere where possible. *)
 let transform image ~(threshold : float) : _ =
   let max = Int.to_float (Image.max_val image) in
   let rgb_threshold = max *. threshold in

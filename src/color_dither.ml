@@ -1,13 +1,31 @@
 open Core
 
+module Adjustment = struct
+  type t =
+    { error_adjustment : float
+    ; x_coord : int
+    ; y_coord : int
+    }
+end
+
+module PixelError = struct
+  type t =
+    { red : int
+    ; green : int
+    ; blue : int
+    }
+end
+
 let adjust_pixel ~red_error ~green_error ~blue_error image ~x ~y ~adjust =
   let width = Image.width image - 1 in
   let height = Image.height image - 1 in
+  (* Make sure we are only adding to pixels that exist *)
   if x <= width && x >= 0 && y <= height
   then (
-    let red_adjustment = adjust *. red_error /. 16. in
-    let green_adjustment = adjust *. green_error /. 16. in
-    let blue_adjustment = adjust *. blue_error /. 16. in
+    (* CR leli: Keep the numerator/denominator *)
+    let red_adjustment = adjust *. red_error in
+    let green_adjustment = adjust *. green_error in
+    let blue_adjustment = adjust *. blue_error in
     Image.set
       image
       ~x
@@ -19,64 +37,49 @@ let adjust_pixel ~red_error ~green_error ~blue_error image ~x ~y ~adjust =
          , Float.to_int (Float.round blue_adjustment) )))
 ;;
 
-let distribute_to_adj ~x ~y image ~red_error ~green_error ~blue_error =
-  (* Add 7/16 error to pixel to the right *)
-  adjust_pixel
-    ~red_error
-    ~green_error
-    ~blue_error
-    image
-    ~x:(x + 1)
-    ~y
-    ~adjust:7.;
-  (* Add 3/16 error to bottom left *)
-  adjust_pixel
-    ~red_error
-    ~green_error
-    ~blue_error
-    image
-    ~x:(x + 1)
-    ~y
-    ~adjust:3.;
-  (* Add 5/16 error to below *)
-  adjust_pixel
-    ~red_error
-    ~green_error
-    ~blue_error
-    image
-    ~x:(x + 1)
-    ~y
-    ~adjust:5.;
-  (* Add 1/16 error to bottom right *)
-  adjust_pixel
-    ~red_error
-    ~green_error
-    ~blue_error
-    image
-    ~x:(x + 1)
-    ~y
-    ~adjust:1.
-;;
-
 let dither image ~x ~y pixel ~(channel : int) : Pixel.t =
   let max = Image.max_val image in
+  (* Get original RGB values of the pixel *)
   let red = Pixel.red pixel in
   let green = Pixel.green pixel in
   let blue = Pixel.blue pixel in
-  let new_red = Int.round red ~to_multiple_of:max / (channel - 1) in
-  let new_green = Int.round green ~to_multiple_of:max / (channel - 1) in
-  let new_blue = Int.round blue ~to_multiple_of:max / (channel - 1) in
-  let red_error = Int.to_float (red - new_red) in
-  let green_error = Int.to_float (green - new_green) in
-  let blue_error = Int.to_float (blue - new_blue) in
-  distribute_to_adj ~x ~y image ~red_error ~blue_error ~green_error;
-  new_red, new_green, new_blue
+  let colors = [ red; green; blue ] in
+  (* Get new RGB values of the pixel by rounding to nearest channel *)
+  let new_colors =
+    List.map colors ~f:(fun color ->
+      Int.round color ~to_multiple_of:max / (channel - 1))
+  in
+  (* Get errors for each color given the new and old rgb values *)
+  let errors =
+    List.map (List.zip_exn colors new_colors) ~f:(fun (color, new_color) ->
+      Int.to_float (color - new_color))
+  in
+  (* Distributes the errors to adjacent pixels *)
+  let pixels_to_update =
+    [ x + 1, y, 7. /. 16.
+    ; x - 1, y + 1, 3. /. 16.
+    ; x, y + 1, 5. /. 16.
+    ; x + 1, y + 1, 1. /. 16.
+    ]
+  in
+  List.iter pixels_to_update ~f:(fun (x, y, adjust) ->
+    adjust_pixel
+      ~red_error:(List.nth_exn errors 0)
+      ~green_error:(List.nth_exn errors 1)
+      ~blue_error:(List.nth_exn errors 2)
+      image
+      ~x
+      ~y
+      ~adjust);
+  (* Return new RGB values *)
+  ( List.nth_exn new_colors 0
+  , List.nth_exn new_colors 1
+  , List.nth_exn new_colors 2 )
 ;;
 
 (* This should look familiar by now! *)
 let transform image ~channel =
-  Grayscale.transform image
-  |> Image.mapi ~f:(fun ~x ~y pixel -> dither image ~x ~y pixel ~channel)
+  Image.mapi image ~f:(fun ~x ~y pixel -> dither image ~x ~y pixel ~channel)
 ;;
 
 let%expect_test "dither" =
